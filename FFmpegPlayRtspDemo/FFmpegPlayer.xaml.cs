@@ -50,9 +50,10 @@ namespace FFmpegPlayRtspDemo
             if (string.IsNullOrEmpty(RtspUrl))
                 return;
             thPlayer = new Thread(DeCoding);
-            thPlayer.SetApartmentState(ApartmentState.STA);//设置单线程
+            thPlayer.SetApartmentState(ApartmentState.MTA);//设置单线程
             thPlayer.IsBackground = true;
             thPlayer.Start();
+
         }
 
         object _bitMapLocker = new object();
@@ -60,11 +61,8 @@ namespace FFmpegPlayRtspDemo
         {
             try
             {
-                //if (ClassHelp.Instance.SysSettingModel.Camera1 != 0)
-                //{
                 ClassHelp.Instance.FFmpegHelp = new FFmpegHelp();
                 ClassHelp.Instance.FFmpegHelp.Register();
-                //}
                 string strResult = "";
                 lock (_bitMapLocker)
                 {
@@ -73,18 +71,11 @@ namespace FFmpegPlayRtspDemo
                     {
                         Dispatcher.BeginInvoke(new Action(() =>
                         {
-                            Bitmap oldBitMap;
-                            Bitmap autobitmap;
-
                             if (bmp != null)
                             {
-                                oldBitMap = bmp;
-                                autobitmap = bmp;
-                                ImageSource videSource = ImageSourceForBitmap(oldBitMap);
-                                this.videodest01.Source = videSource;
-                                //this.videodest02.Source = videSource;
-                                //this.videodest03.Source = videSource;
-                                //this.videodest04.Source = videSource;
+                                pic.Image = bmp;
+                                //ImageSource videSource = ImageSourceForBitmap(bmp);
+                                //this.videodest01.Source = videSource;
                                 ClassHelp.Instance.IsAlert = false;
                             }
                             else
@@ -95,7 +86,6 @@ namespace FFmpegPlayRtspDemo
                         }));
                     };
                     ClassHelp.Instance.FFmpegHelp.Start(show, RtspUrl, out strResult);
-                    //Start(show, RtspUrl, out strResult);
                     if (!string.IsNullOrEmpty(strResult) && ClassHelp.Instance.IsAlert == true)
                     {
                         ClassHelp.Instance.IsAlert = false;

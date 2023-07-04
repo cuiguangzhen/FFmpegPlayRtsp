@@ -5,8 +5,13 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:FFmpegPlayRtspDemo"
         mc:Ignorable="d"
-        Title="FFmpeg播放" Height="480" Width="800" WindowStartupLocation="CenterScreen" ResizeMode="NoResize">
+        Title="FFmpeg播放" Height="880" Width="1000" WindowStartupLocation="CenterScreen" ResizeMode="NoResize">
     <Grid>
-        <local:FFmpegPlayer x:Name="player1"/>
+        <WrapPanel x:Name="wp">
+            <local:FFmpegPlayer x:Name="player1" Width="400" Height="400"/>
+            <local:FFmpegPlayer x:Name="player2" Width="400" Height="400"/>
+            <local:FFmpegPlayer x:Name="player3" Width="400" Height="400"/>
+            <local:FFmpegPlayer x:Name="player4" Width="400" Height="400"/>
+        </WrapPanel>
     </Grid>
 </Window>

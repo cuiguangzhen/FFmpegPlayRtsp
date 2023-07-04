@@ -28,7 +28,10 @@ namespace FFmpegPlayRtspDemo
         public MainWindow()
         {
             InitializeComponent();
-            player1.RtspUrl = "rtsp://admin:hk123456@192.168.4.249:554/h264/ch1/main/av_stream";
+            player1.RtspUrl = "rtsp://admin:hk123456@192.168.4.52:554/h264/ch1/main/av_stream";
+            player2.RtspUrl = "rtsp://admin:hk123456@192.168.4.57:554/h264/ch1/main/av_stream";
+            player3.RtspUrl = "rtsp://admin:hk123456@192.168.4.58:554/h264/ch1/main/av_stream";
+            player4.RtspUrl = "rtsp://admin:hk123456@192.168.4.60:554/h264/ch1/main/av_stream";
         }
     }
 }

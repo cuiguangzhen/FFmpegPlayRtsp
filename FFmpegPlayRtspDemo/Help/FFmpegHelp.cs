@@ -50,40 +50,66 @@ namespace FFmpegPlayRtspDemo
         /// <param name="url">播放地址，也可以是本地文件地址</param>
         public unsafe void Start(ShowBitmap show, string url, out string strResult)
         {
-            strResult = "";
-            #region ffmpeg 转码
-            int error;
-            AVDictionary* c = null;
-            ffmpeg.av_dict_set(&c, "stimeout", "3000000", 0);
-            ffmpeg.av_dict_set(&c, "rtsp_transport", "tcp", 0);
-            AVFormatContext* pFormatContext = pFc;
-            //打开流
-            error = ffmpeg.avformat_open_input(&pFormatContext, url, null, &c);
-            if (error != 0)
-            {
-                //CanRun = false;
-                //throw new ApplicationException(GetErrorMessage(error));
-                strResult = "网络连接失败";
-                return;
-            }
+            strResult = "";            
             CanRun = true;
+
+            Console.WriteLine(@"Current directory: " + Environment.CurrentDirectory);
+            Console.WriteLine(@"Runnung in {0}-bit mode.", Environment.Is64BitProcess ? @"64" : @"32");
+            //FFmpegDLL目录查找和设置
+            FFmpegBinariesHelper.RegisterFFmpegBinaries();
+
+            #region ffmpeg 初始化
+            // 初始化注册ffmpeg相关的编码器
+            ffmpeg.av_register_all();
+            ffmpeg.avcodec_register_all();
+            ffmpeg.avformat_network_init();
+
+            Console.WriteLine($"FFmpeg version info: {ffmpeg.av_version_info()}");
+            #endregion
+
+            #region ffmpeg 日志
+            // 设置记录ffmpeg日志级别
+            ffmpeg.av_log_set_level(ffmpeg.AV_LOG_VERBOSE);
+            av_log_set_callback_callback logCallback = (p0, level, format, vl) =>
+            {
+                if (level > ffmpeg.av_log_get_level()) return;
+
+                var lineSize = 1024;
+                var lineBuffer = stackalloc byte[lineSize];
+                var printPrefix = 1;
+                ffmpeg.av_log_format_line(p0, level, format, vl, lineBuffer, lineSize, &printPrefix);
+                var line = Marshal.PtrToStringAnsi((IntPtr)lineBuffer);
+                Console.Write(line);
+            };
+            ffmpeg.av_log_set_callback(logCallback);
+
+            #endregion
+
+            #region ffmpeg 转码
+
+
+            // 分配音视频格式上下文
+            var pFormatContext = ffmpeg.avformat_alloc_context();
+
+            int error;
+
+            //打开流
+            error = ffmpeg.avformat_open_input(&pFormatContext, url, null, null);
+            if (error != 0) throw new ApplicationException(GetErrorMessage(error));
+
             // 读取媒体流信息
             error = ffmpeg.avformat_find_stream_info(pFormatContext, null);
-            if (error != 0)
-            {
-                //CanRun = false;
-                //throw new ApplicationException(GetErrorMessage(error));
-                strResult = "网络连接失败";
-                return;
-            }
+            if (error != 0) throw new ApplicationException(GetErrorMessage(error));
+
             // 这里只是为了打印些视频参数
-            //AVDictionaryEntry* tag = null;
-            //while ((tag = ffmpeg.av_dict_get(pFormatContext->metadata, "", tag, ffmpeg.AV_DICT_IGNORE_SUFFIX)) != null)
-            //{
-            //    var key = Marshal.PtrToStringAnsi((IntPtr)tag->key);
-            //    var value = Marshal.PtrToStringAnsi((IntPtr)tag->value);
-            //    Console.WriteLine($"{key} = {value}");
-            //}
+            AVDictionaryEntry* tag = null;
+            while ((tag = ffmpeg.av_dict_get(pFormatContext->metadata, "", tag, ffmpeg.AV_DICT_IGNORE_SUFFIX)) != null)
+            {
+                var key = Marshal.PtrToStringAnsi((IntPtr)tag->key);
+                var value = Marshal.PtrToStringAnsi((IntPtr)tag->value);
+                Console.WriteLine($"{key} = {value}");
+            }
+
             // 从格式化上下文获取流索引
             AVStream* pStream = null, aStream;
             for (var i = 0; i < pFormatContext->nb_streams; i++)
@@ -104,7 +130,7 @@ namespace FFmpegPlayRtspDemo
             // 获取流的编码器上下文
             var codecContext = *pStream->codec;
 
-            // Console.WriteLine($"codec name: {ffmpeg.avcodec_get_name(codecContext.codec_id)}");
+            Console.WriteLine($"codec name: {ffmpeg.avcodec_get_name(codecContext.codec_id)}");
             // 获取图像的宽、高及像素格式
             var width = codecContext.width;
             var height = codecContext.height;
@@ -153,11 +179,8 @@ namespace FFmpegPlayRtspDemo
 
             // 通过解码器打开解码器上下文:AVCodecContext pCodecContext
             error = ffmpeg.avcodec_open2(pCodecContext, pCodec, null);
-            if (error < 0)
-            {
-                CanRun = false;
-                throw new ApplicationException(GetErrorMessage(error));
-            }
+            if (error < 0) throw new ApplicationException(GetErrorMessage(error));
+
             // 分配解码帧对象：AVFrame pDecodedFrame
             var pDecodedFrame = ffmpeg.av_frame_alloc();
 
@@ -166,7 +189,7 @@ namespace FFmpegPlayRtspDemo
             var pPacket = &packet;
             ffmpeg.av_init_packet(pPacket);
 
-            //var frameNumber = 0;
+            var frameNumber = 0;
             while (CanRun)
             {
                 try
@@ -177,36 +200,20 @@ namespace FFmpegPlayRtspDemo
                         error = ffmpeg.av_read_frame(pFormatContext, pPacket);
                         // Console.WriteLine(pPacket->dts);
                         if (error == ffmpeg.AVERROR_EOF) break;
-                        if (error < 0)
-                        {
-                            //strResult = "网络连接失败";
-                            throw new ApplicationException(GetErrorMessage(error));
-                        }
-                        if (pPacket->stream_index != pStream->index)
-                            continue;
+                        if (error < 0) throw new ApplicationException(GetErrorMessage(error));
+
+                        if (pPacket->stream_index != pStream->index) continue;
 
                         // 解码
                         error = ffmpeg.avcodec_send_packet(pCodecContext, pPacket);
                         if (error < 0) throw new ApplicationException(GetErrorMessage(error));
                         // 解码输出解码数据
                         error = ffmpeg.avcodec_receive_frame(pCodecContext, pDecodedFrame);
-                    }
-                    while (error == ffmpeg.AVERROR(ffmpeg.EAGAIN) && CanRun);
-                    //判断是否有流
-                    if (error == ffmpeg.AVERROR_EOF)
-                    {
-                        strResult = "网络连接失败";
-                        break;
-                    }
-                    if (error < 0)
-                    {
-                        strResult = "网络连接失败";
-                        break;
-                        //throw new ApplicationException(GetErrorMessage(error));
-                    }
+                    } while (error == ffmpeg.AVERROR(ffmpeg.EAGAIN) && CanRun);
+                    if (error == ffmpeg.AVERROR_EOF) break;
+                    if (error < 0) throw new ApplicationException(GetErrorMessage(error));
 
-                    if (pPacket->stream_index != pStream->index)
-                        continue;
+                    if (pPacket->stream_index != pStream->index) continue;
 
                     //Console.WriteLine($@"frame: {frameNumber}");
                     // YUV->RGB
@@ -214,20 +221,20 @@ namespace FFmpegPlayRtspDemo
                 }
                 finally
                 {
-                    ffmpeg.av_packet_unref(pPacket);//释放数据包对象引用                   
+                    ffmpeg.av_packet_unref(pPacket);//释放数据包对象引用
                     ffmpeg.av_frame_unref(pDecodedFrame);//释放解码帧对象引用
                 }
+
                 // 封装Bitmap图片
                 var bitmap = new Bitmap(width, height, dstLinesize[0], PixelFormat.Format24bppRgb, convertedFrameBufferPtr);
                 // 回调
                 show(bitmap);
                 //bitmap.Save(AppDomain.CurrentDomain.BaseDirectory + "\\264\\frame.buffer."+ frameNumber + ".jpg", ImageFormat.Jpeg);
 
-                //frameNumber++;
+                frameNumber++;
             }
             //播放完置空播放图片 
             show(null);
-            //show(IntPtr.Zero);
 
             #endregion
 
@@ -239,6 +246,8 @@ namespace FFmpegPlayRtspDemo
             ffmpeg.av_free(pDecodedFrame);
             ffmpeg.avcodec_close(pCodecContext);
             ffmpeg.avformat_close_input(&pFormatContext);
+
+
             #endregion
         }
 
