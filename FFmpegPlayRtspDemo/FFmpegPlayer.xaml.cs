@@ -57,12 +57,13 @@ namespace FFmpegPlayRtspDemo
         }
 
         object _bitMapLocker = new object();
+        FFmpegHelp _ffmpegHelp = null;
         private unsafe void DeCoding()
         {
             try
             {
-                ClassHelp.Instance.FFmpegHelp = new FFmpegHelp();
-                ClassHelp.Instance.FFmpegHelp.Register();
+                _ffmpegHelp = new FFmpegHelp();
+                _ffmpegHelp.Register();
                 string strResult = "";
                 lock (_bitMapLocker)
                 {
@@ -76,20 +77,12 @@ namespace FFmpegPlayRtspDemo
                                 pic.Image = bmp;
                                 //ImageSource videSource = ImageSourceForBitmap(bmp);
                                 //this.videodest01.Source = videSource;
-                                ClassHelp.Instance.IsAlert = false;
-                            }
-                            else
-                            {
-                                ClassHelp.Instance.IsAlert = true;
-                                ClassHelp.Instance.IsNetwork = true;
                             }
                         }));
                     };
-                    ClassHelp.Instance.FFmpegHelp.Start(show, RtspUrl, out strResult);
-                    if (!string.IsNullOrEmpty(strResult) && ClassHelp.Instance.IsAlert == true)
+                    _ffmpegHelp.Start(show, RtspUrl, out strResult);
+                    if (!string.IsNullOrEmpty(strResult))
                     {
-                        ClassHelp.Instance.IsAlert = false;
-                        ClassHelp.Instance.IsNetwork = false;
                         this.Dispatcher.Invoke(new Action(() =>
                         {
                             MessageBox.Show($"错误信息:{strResult}");
@@ -97,14 +90,18 @@ namespace FFmpegPlayRtspDemo
                     }
                 }
             }
-            finally
+            catch(Exception ex)
             {
-                thPlayer.DisableComObjectEagerCleanup();
-                thPlayer = null;
-                thPlayer = new Thread(DeCoding);
-                thPlayer.IsBackground = true;
-                thPlayer.Start();
+
             }
+            //finally
+            //{
+            //    thPlayer.DisableComObjectEagerCleanup();
+            //    thPlayer = null;
+            //    thPlayer = new Thread(DeCoding);
+            //    thPlayer.IsBackground = true;
+            //    thPlayer.Start();
+            //}
         }
 
         [DllImport("gdi32.dll", EntryPoint = "DeleteObject")]
@@ -125,6 +122,13 @@ namespace FFmpegPlayRtspDemo
                 DeleteObject(handle);
                 return null;
             }
+        }
+
+        private void Button_Click(object sender, RoutedEventArgs e)
+        {
+            thPlayer.Abort();
+            //Thread.Sleep(200);
+            _ffmpegHelp.Stop();
         }
     }
 }

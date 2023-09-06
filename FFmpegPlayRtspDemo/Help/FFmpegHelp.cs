@@ -28,10 +28,8 @@ namespace FFmpegPlayRtspDemo
             ffmpeg.avcodec_register_all();
             ffmpeg.avformat_network_init();
             #endregion
-            AVFormatContext* pFc;
             // 分配音视频格式上下文
             pFc = ffmpeg.avformat_alloc_context();
-            ClassHelp.Instance.FFmpegHelp.pFc = pFc;
         }
         /// <summary>
         /// 显示图片委托

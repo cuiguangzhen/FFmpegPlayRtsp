@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:FFmpegPlayRtspDemo"
         mc:Ignorable="d"
-        Title="FFmpeg播放" Height="880" Width="1000" WindowStartupLocation="CenterScreen" ResizeMode="NoResize">
+        Title="FFmpeg播放" Height="840" Width="820" WindowStartupLocation="CenterScreen" ResizeMode="NoResize">
     <Grid>
         <WrapPanel x:Name="wp">
             <local:FFmpegPlayer x:Name="player1" Width="400" Height="400"/>

@@ -93,7 +93,6 @@
     <Compile Include="FFmpegPlayer.xaml.cs">
       <DependentUpon>FFmpegPlayer.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Help\ClassHelp.cs" />
     <Compile Include="Help\FFmpegBinariesHelper.cs" />
     <Compile Include="Help\FFmpegHelp.cs" />
     <Compile Include="MainWindow.xaml.cs">
